@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Secrets and local environment files
+.env
+.env.local
+.env.*
+**/.env
+**/.env.local
+**/.env.*
+!**/.env.example
+
+# Dependency installs
+**/node_modules/
+
+# Local framework/build output
+relmes-front/.next/
+relme-dev copy/.next/
+relmes-developer-panel/.next/
+sdk/examples/next-plugin-demo/.next/
+Relmes-backend/dist/
+boilerplate/apps/web/dist/
+boilerplate/apps/api/dist/
+boilerplate/.turbo/
+
+# Local backups
+.git-backups/
+
+# Large local artifacts
+boilerplalte/*.zip

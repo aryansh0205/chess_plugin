@@ -1,0 +1,15 @@
+{
+  "name": "relmes-full",
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "dev:web": "npm run dev -w web",
+    "dev:api": "npm run dev -w api"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  }
+}

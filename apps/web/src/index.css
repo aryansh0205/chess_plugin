@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /*
+     * Font stacks (also see `FONT_WEIGHT` in src/design/fonts.ts).
+     */
+    --font-sans:
+      "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji";
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+    /* Semantic palette — consumed by Tailwind theme extension */
+    --color-page: 248 250 252;
+    --color-surface: 255 255 255;
+    --color-border: 226 232 240;
+    --color-fg: 15 23 42;
+    --color-fg-muted: 71 85 105;
+    --color-accent: 37 99 235;
+
+    /*
+     * Embed / banners (keep Tailwind-able rgb triples).
+     */
+    --color-banner-bg: 254 243 199;
+    --color-banner-border: 253 230 138;
+    --color-banner-fg: 120 53 15;
+  }
+
+  html.dark {
+    color-scheme: dark;
+
+    /* Page canvas */
+    --color-page: 23 23 23; /* #171717 */
+    /* Slightly lifted panels on the canvas */
+    --color-surface: 31 31 31; /* #1f1f1f */
+    --color-border: 48 48 48; /* ~#303030 — hairlines against #171717 */
+    --color-fg: 248 250 252;
+    --color-fg-muted: 163 163 163;
+    --color-accent: 96 165 250;
+
+    --color-banner-bg: 66 45 23;
+    --color-banner-border: 120 71 31;
+    --color-banner-fg: 254 229 209;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    touch-action: manipulation;
+    font-family: var(--font-sans);
+    font-optical-sizing: auto;
+    font-variation-settings: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Relmes-style thin scrollbars; tokens track light/dark via :root / html.dark */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--color-page));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--color-border));
+    border-radius: 9999px;
+    border: 2px solid rgb(var(--color-page));
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--color-fg-muted) / 0.45);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border)) rgb(var(--color-page));
+  }
+
+  body {
+    background-color: rgb(var(--color-page));
+    color: rgb(var(--color-fg));
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /*
+   * Helpers for dashboards / monospace numbers (see FONT_FEATURE.tabularNums in TS).
+   */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer utilities {
+  .bg-grid-fine {
+    background-image:
+      linear-gradient(to right, rgb(var(--color-border) / 0.4) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--color-border) / 0.4) 1px, transparent 1px);
+    background-size: 52px 52px;
+    mask-image: radial-gradient(ellipse 75% 65% at 50% 38%, #000 38%, transparent 72%);
+  }
+}
