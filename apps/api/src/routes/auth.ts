@@ -3,9 +3,10 @@ import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import mongoose from "mongoose";
 import { User } from "../models/User.js";
-import { signSessionToken, verifySessionToken } from "../auth/jwt.js";
+import { findOrCreateEmbedUser } from "../auth/embedUser.js";
+import { signSessionToken } from "../auth/jwt.js";
+import { getRequestUser } from "../auth/session.js";
 import {
-  SESSION_COOKIE,
   clearAuthCookies,
   setAuthCookies,
   type PublicUser,
@@ -17,7 +18,7 @@ router.use((_req: Request, res: Response, next) => {
   if (mongoose.connection.readyState !== 1) {
     res.status(503).json({
       error:
-        "Database unavailable. Copy apps/api/.env.example to apps/api/.env, set MONGO_URI, and ensure MongoDB is running.",
+        "Database unavailable. Set MONGO_URI in the plugin root .env and ensure MongoDB is reachable.",
     });
     return;
   }
@@ -26,7 +27,11 @@ router.use((_req: Request, res: Response, next) => {
 
 const SALT_ROUNDS = 10;
 
-function publicUserFromDoc(doc: { _id: { toString(): string }; email: string; name: string }): PublicUser {
+function publicUserFromDoc(doc: {
+  _id: { toString(): string };
+  email: string;
+  name: string;
+}): PublicUser {
   return { id: doc._id.toString(), email: doc.email, name: doc.name };
 }
 
@@ -56,7 +61,7 @@ router.post("/signup", async (req: Request, res: Response) => {
     const user = publicUserFromDoc(created);
     const token = signSessionToken(user);
     setAuthCookies(res, token, user);
-    res.status(201).json({ user });
+    res.status(201).json({ user, token });
   } catch (e) {
     console.error("signup", e);
     res.status(500).json({ error: "could not create account" });
@@ -88,10 +93,27 @@ router.post("/login", async (req: Request, res: Response) => {
     const user = publicUserFromDoc(doc);
     const token = signSessionToken(user);
     setAuthCookies(res, token, user);
-    res.json({ user });
+    res.json({ user, token });
   } catch (e) {
     console.error("login", e);
     res.status(500).json({ error: "could not sign in" });
+  }
+});
+
+router.post("/embed", async (req: Request, res: Response) => {
+  try {
+    const doc = await findOrCreateEmbedUser(req.body ?? {});
+    if (!doc) {
+      res.status(400).json({ error: "serverId and id required" });
+      return;
+    }
+    const user = publicUserFromDoc(doc);
+    const token = signSessionToken(user);
+    setAuthCookies(res, token, user);
+    res.json({ user, token });
+  } catch (e) {
+    console.error("embed login", e);
+    res.status(500).json({ error: "could not sign in with Relmes account" });
   }
 });
 
@@ -101,12 +123,7 @@ router.post("/logout", (_req: Request, res: Response) => {
 });
 
 router.get("/me", (req: Request, res: Response) => {
-  const raw = req.cookies?.[SESSION_COOKIE];
-  if (typeof raw !== "string" || !raw.trim()) {
-    res.status(401).json({ user: null });
-    return;
-  }
-  const user = verifySessionToken(raw);
+  const user = getRequestUser(req);
   if (!user) {
     clearAuthCookies(res);
     res.status(401).json({ user: null });

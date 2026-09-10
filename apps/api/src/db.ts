@@ -4,7 +4,7 @@ export async function connectDb(): Promise<boolean> {
   const uri = process.env.MONGO_URI?.trim();
   if (!uri) {
     console.warn(
-      "[api] MONGO_URI is not set. Copy apps/api/.env.example to apps/api/.env and set MONGO_URI.",
+      "[api] MONGO_URI is not set. Set it in the plugin root .env and ensure MongoDB is reachable.",
     );
     return false;
   }

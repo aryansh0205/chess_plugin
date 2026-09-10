@@ -1,9 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "PORT",
+    "NODE_ENV",
+    "MONGO_URI",
+    "JWT_SECRET",
+    "CORS_ORIGINS",
+    "RELMES_BACKEND_URL",
+    "VITE_API_URL",
+    "VITE_RELMES_PARENT_ORIGINS",
+    "VITE_RELMES_API_URL",
+    "VITE_RELMES_PLUGIN_ID"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "env": ["VITE_*"]
     },
     "dev": {
       "cache": false,

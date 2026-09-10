@@ -26,6 +26,7 @@ export function getStandardResult(chess: Chess): GameResult {
 export function resultAnnouncement(
   result: GameResult,
   mode: "cpu" | "2p" | "4p",
+  vsCpu = true,
 ): string | null {
   switch (result.kind) {
     case "check": {
@@ -48,7 +49,9 @@ export function resultAnnouncement(
     case "draw":
       return "Draw. The game ends in a tie.";
     case "four_win":
-      return `Checkmate! ${FOUR_PLAYER_NAMES[result.winner]} wins the game.`;
+      return vsCpu && result.winner === 0
+        ? "Checkmate! You win!"
+        : `Checkmate! ${FOUR_PLAYER_NAMES[result.winner]} wins the game.`;
     case "four_eliminated":
       return `${FOUR_PLAYER_NAMES[result.player]} has been eliminated.`;
     case "playing":
@@ -56,7 +59,11 @@ export function resultAnnouncement(
   }
 }
 
-export function resultTitle(result: GameResult, mode: "cpu" | "2p" | "4p"): string | null {
+export function resultTitle(
+  result: GameResult,
+  mode: "cpu" | "2p" | "4p",
+  vsCpu = true,
+): string | null {
   switch (result.kind) {
     case "checkmate":
       if (mode === "cpu") return result.winner === "w" ? "You Win!" : "CPU Wins";
@@ -66,13 +73,19 @@ export function resultTitle(result: GameResult, mode: "cpu" | "2p" | "4p"): stri
     case "draw":
       return "Draw";
     case "four_win":
-      return `${FOUR_PLAYER_NAMES[result.winner]} Wins`;
+      return vsCpu && result.winner === 0
+        ? "You Win!"
+        : `${FOUR_PLAYER_NAMES[result.winner]} Wins`;
     default:
       return null;
   }
 }
 
-export function resultSubtitle(result: GameResult, mode: "cpu" | "2p" | "4p"): string | null {
+export function resultSubtitle(
+  result: GameResult,
+  mode: "cpu" | "2p" | "4p",
+  vsCpu = true,
+): string | null {
   switch (result.kind) {
     case "checkmate":
       return mode === "cpu"
@@ -85,7 +98,11 @@ export function resultSubtitle(result: GameResult, mode: "cpu" | "2p" | "4p"): s
     case "draw":
       return result.reason ?? "The game ends in a tie.";
     case "four_win":
-      return "Last king standing claims victory.";
+      return vsCpu && result.winner === 0
+        ? "Last king standing — well played."
+        : vsCpu
+          ? "The last king standing belongs to the CPU."
+          : "Last king standing claims victory.";
     default:
       return null;
   }

@@ -3,7 +3,10 @@ import type { GameMode } from "../types";
 type Props = {
   mode: GameMode;
   status: string;
+  statusColor?: string;
   voiceOn?: boolean;
+  fourVsCpu?: boolean;
+  onToggleFourCpu?: () => void;
   onToggleVoice?: () => void;
   onNewGame: () => void;
   onChangeMode: (mode: GameMode) => void;
@@ -13,13 +16,16 @@ type Props = {
 const MODES: { id: GameMode; label: string; desc: string }[] = [
   { id: "cpu", label: "vs CPU", desc: "Play as White against the computer" },
   { id: "2p", label: "2 Player", desc: "Local hot-seat on one device" },
-  { id: "4p", label: "4 Player", desc: "Cross-board, four armies" },
+  { id: "4p", label: "4 Player", desc: "Plus-shaped board — CPU or free play" },
 ];
 
 export function GamePanel({
   mode,
   status,
+  statusColor,
   voiceOn = true,
+  fourVsCpu = true,
+  onToggleFourCpu,
   onToggleVoice,
   onNewGame,
   onChangeMode,
@@ -51,12 +57,42 @@ export function GamePanel({
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface/80 px-4 py-3">
+      <div
+        className="rounded-xl border border-border bg-surface/80 px-4 py-3"
+        style={
+          statusColor
+            ? { borderColor: statusColor, boxShadow: `inset 3px 0 0 ${statusColor}` }
+            : undefined
+        }
+      >
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-fg-muted">Status</p>
-        <p className="mt-2 text-sm font-medium text-fg">{status}</p>
+        <p className="mt-2 flex items-center gap-2 text-sm font-medium text-fg">
+          {statusColor && (
+            <span
+              className="chess-turn-chip h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ background: statusColor, ["--turn-color" as string]: statusColor }}
+            />
+          )}
+          {status}
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">
+        {mode === "4p" && onToggleFourCpu && (
+          <button
+            type="button"
+            onClick={onToggleFourCpu}
+            className={[
+              "rounded-full border px-5 py-2.5 text-sm font-semibold transition",
+              fourVsCpu
+                ? "border-accent/50 bg-accent/10 text-accent"
+                : "border-border bg-surface text-fg-muted hover:border-accent hover:text-fg",
+            ].join(" ")}
+            aria-pressed={fourVsCpu}
+          >
+            {fourVsCpu ? "CPU on — you play Yellow" : "CPU off — free play"}
+          </button>
+        )}
         <button
           type="button"
           onClick={onNewGame}

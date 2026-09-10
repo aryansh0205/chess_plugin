@@ -1,23 +1,35 @@
-import { useCallback, useMemo, useState } from "react";
-import { createInitialBoard, type FourBoard } from "./board";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createInitialBoard,
+  findKing,
+  squareKey,
+  type FourBoard,
+} from "./board";
+import { getBestFourMove } from "./engine";
 import {
   getLegalMoves,
-  isKingCaptured,
+  isInCheck,
   moveKey,
   nextPlayer,
+  playMove,
   type FourMove,
 } from "./moves";
+import type { FourPiece } from "./board";
 import type { GameResult } from "../gameResult";
 import type { FourPlayerId } from "../types";
 import { FOUR_PLAYER_NAMES } from "../types";
 
-export function useFourPlayerChess() {
+export const HUMAN_PLAYER: FourPlayerId = 0;
+
+export function useFourPlayerChess(vsCpu: boolean) {
   const [board, setBoard] = useState<FourBoard>(() => createInitialBoard());
   const [turn, setTurn] = useState<FourPlayerId>(0);
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [lastMove, setLastMove] = useState<FourMove | null>(null);
   const [eliminated, setEliminated] = useState<Set<FourPlayerId>>(new Set());
   const [lastEliminated, setLastEliminated] = useState<FourPlayerId | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const [captured, setCaptured] = useState<FourPiece[]>([]);
 
   const legalMoves = useMemo(() => getLegalMoves(board, turn), [board, turn]);
 
@@ -39,6 +51,16 @@ export function useFourPlayerChess() {
     return null;
   }, [activePlayers]);
 
+  const checkedSquares = useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of [0, 1, 2, 3] as FourPlayerId[]) {
+      if (eliminated.has(p) || !isInCheck(board, p)) continue;
+      const king = findKing(board, p);
+      if (king) keys.add(squareKey(king.row, king.col));
+    }
+    return keys;
+  }, [board, eliminated]);
+
   const gameResult = useMemo((): GameResult => {
     if (winner !== null) return { kind: "four_win", winner };
     if (lastEliminated !== null) return { kind: "four_eliminated", player: lastEliminated };
@@ -46,10 +68,20 @@ export function useFourPlayerChess() {
   }, [lastEliminated, winner]);
 
   const status = useMemo(() => {
-    if (winner !== null) return `Checkmate — ${FOUR_PLAYER_NAMES[winner]} wins!`;
-    if (legalMoves.length === 0) return `${FOUR_PLAYER_NAMES[turn]} has no legal moves — skipped`;
-    return `${FOUR_PLAYER_NAMES[turn]} to move`;
-  }, [legalMoves.length, turn, winner]);
+    const name = FOUR_PLAYER_NAMES[turn];
+    if (winner !== null) {
+      if (vsCpu && winner === HUMAN_PLAYER) return "Checkmate — you win!";
+      return `Checkmate — ${FOUR_PLAYER_NAMES[winner]} wins!`;
+    }
+    if (vsCpu && (thinking || turn !== HUMAN_PLAYER)) {
+      return `${name} CPU thinking…`;
+    }
+    if (isInCheck(board, turn)) {
+      return vsCpu && turn === HUMAN_PLAYER ? "Your king is in check" : `${name} is in check`;
+    }
+    if (vsCpu) return "Your turn (Yellow)";
+    return `${name} to move`;
+  }, [board, thinking, turn, vsCpu, winner]);
 
   const reset = useCallback(() => {
     setBoard(createInitialBoard());
@@ -58,52 +90,38 @@ export function useFourPlayerChess() {
     setLastMove(null);
     setEliminated(new Set());
     setLastEliminated(null);
+    setThinking(false);
+    setCaptured([]);
   }, []);
 
   const applyMove = useCallback(
     (move: FourMove) => {
-      const nextBoard = board.map((row) => [...row]);
-      const piece = nextBoard[move.from.row][move.from.col];
-      if (!piece) return;
+      const result = playMove(board, turn, eliminated, move);
+      if (!result) return;
 
-      nextBoard[move.from.row][move.from.col] = null;
-      const promoted =
-        piece.type === "p" &&
-        ((piece.player === 0 && move.to.row <= 3) ||
-          (piece.player === 2 && move.to.row >= 10) ||
-          (piece.player === 1 && move.to.col >= 10) ||
-          (piece.player === 3 && move.to.col <= 3));
-
-      nextBoard[move.to.row][move.to.col] = promoted
-        ? { ...piece, type: "q" }
-        : { ...piece };
-
-      const newEliminated = new Set(eliminated);
-      let justEliminated: FourPlayerId | null = null;
-      for (const p of [0, 1, 2, 3] as FourPlayerId[]) {
-        if (!eliminated.has(p) && isKingCaptured(nextBoard, p)) {
-          newEliminated.add(p);
-          justEliminated = p;
+      const newlyDead: FourPiece[] = [];
+      if (move.capture) newlyDead.push({ ...move.capture });
+      for (const p of result.eliminated) {
+        if (eliminated.has(p)) continue;
+        for (let r = 0; r < board.length; r++) {
+          for (let c = 0; c < board[r].length; c++) {
+            const cell = board[r][c];
+            if (!cell || cell.player !== p) continue;
+            if (move.capture && r === move.to.row && c === move.to.col) continue;
+            newlyDead.push({ ...cell });
+          }
         }
       }
 
-      let nextTurn = nextPlayer(turn, newEliminated);
-      if (newEliminated.size < 3) {
-        let guard = 0;
-        while (getLegalMoves(nextBoard, nextTurn).length === 0 && guard < 4) {
-          nextTurn = nextPlayer(nextTurn, newEliminated);
-          guard++;
-        }
-      }
-
-      setBoard(nextBoard);
-      setEliminated(newEliminated);
-      setLastEliminated(justEliminated);
-      setTurn(nextTurn);
+      setBoard(result.board);
+      setEliminated(result.eliminated);
+      setLastEliminated(result.lastEliminated);
+      setTurn(result.turn);
       setSelected(null);
       setLastMove(move);
+      if (newlyDead.length > 0) setCaptured((prev) => [...prev, ...newlyDead]);
 
-      if (newEliminated.size >= 3) {
+      if (result.eliminated.size >= 3) {
         window.setTimeout(() => setLastEliminated(null), 1200);
       }
     },
@@ -112,7 +130,8 @@ export function useFourPlayerChess() {
 
   const onSquareClick = useCallback(
     (row: number, col: number) => {
-      if (winner !== null) return;
+      if (winner !== null || thinking) return;
+      if (vsCpu && turn !== HUMAN_PLAYER) return;
 
       if (selected) {
         const move = legalMoves.find(
@@ -137,8 +156,29 @@ export function useFourPlayerChess() {
         setSelected({ row, col });
       }
     },
-    [applyMove, board, legalMoves, selected, turn, winner],
+    [applyMove, board, legalMoves, selected, thinking, turn, vsCpu, winner],
   );
+
+  useEffect(() => {
+    if (!vsCpu) {
+      setThinking(false);
+      return;
+    }
+    if (winner !== null || turn === HUMAN_PLAYER || eliminated.has(turn)) return;
+
+    setThinking(true);
+    const timer = window.setTimeout(() => {
+      const best = getBestFourMove(board, turn, eliminated);
+      if (best) {
+        applyMove(best);
+      } else {
+        setTurn(nextPlayer(turn, eliminated));
+      }
+      setThinking(false);
+    }, 420);
+
+    return () => window.clearTimeout(timer);
+  }, [applyMove, board, eliminated, turn, vsCpu, winner]);
 
   return {
     board,
@@ -147,6 +187,9 @@ export function useFourPlayerChess() {
     legalTargets,
     lastMove,
     eliminated,
+    checkedSquares,
+    thinking,
+    captured,
     status,
     gameResult,
     winner,

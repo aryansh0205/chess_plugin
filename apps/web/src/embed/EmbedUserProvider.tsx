@@ -20,9 +20,10 @@ import {
   getRelmesParentOriginAllowlist,
   isTrustedRelmesReferrer,
 } from "./trustedOrigins";
+import { captureEmbedQueryFromUrl } from "./relmesEmbed";
 
 const HANDSHAKE_TIMEOUT_MS = 25_000;
-
+// // Detects “I am in an iframe on relmes.com”
 function parseDbNameFromQuery(encoded: string | null): string {
   if (!encoded) return "";
   try {
@@ -73,7 +74,9 @@ function mergeUser(
   };
 }
 
-function normalizePayload(raw: Record<string, unknown>): RelmesEmbedUser | null {
+function normalizePayload(
+  raw: Record<string, unknown>,
+): RelmesEmbedUser | null {
   const id = String(raw.id ?? raw.userId ?? "");
   if (!id) return null;
   return {
@@ -99,6 +102,15 @@ export type EmbedCtx = {
   /** Handshake: parent sent `relmes:embed:user` from an allowed Relmes origin. */
   receivedFromParent: boolean;
   relmesHandshakeFailed: boolean;
+  /** Plugin API session created from the Relmes embed user. */
+  pluginSessionSynced: boolean;
+  pluginSessionSyncing: boolean;
+  pluginSessionFailed: boolean;
+  pluginApiUser: { id: string; email: string; name: string } | null;
+  setPluginSessionSynced: (synced: boolean) => void;
+  setPluginSessionSyncing: (syncing: boolean) => void;
+  setPluginSessionFailed: (failed: boolean) => void;
+  setPluginApiUser: (user: { id: string; email: string; name: string } | null) => void;
 };
 
 const EmbedUserContext = createContext<EmbedCtx | null>(null);
@@ -111,20 +123,23 @@ function RelmesHandshakeLoading() {
         aria-hidden
       />
       <p className="max-w-sm px-6 text-center text-sm text-[hsl(var(--color-fg-muted))]">
-        Loading your Relmes profile…
+        Signing you into this plugin…
       </p>
     </div>
   );
 }
 
-function RelmesHandshakeError() {
+function RelmesHandshakeError({
+  title,
+  detail,
+}: {
+  title: string;
+  detail: string;
+}) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-[hsl(var(--color-page))] px-6 text-center text-[hsl(var(--color-fg))]">
-      <p className="text-sm font-medium">Could not load your Relmes session</p>
-      <p className="max-w-md text-xs text-[hsl(var(--color-fg-muted))]">
-        Open this plugin from the Relmes app at relmes.in, relmes.com, or localhost:3000, and stay signed in
-        there.
-      </p>
+      <p className="text-sm font-medium">{title}</p>
+      <p className="max-w-md text-xs text-[hsl(var(--color-fg-muted))]">{detail}</p>
     </div>
   );
 }
@@ -152,7 +167,8 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
     }
 
     const b = readBootstrap();
-    if (!b?.userId && !b?.serverId && !(window.self !== window.top)) return null;
+    if (!b?.userId && !b?.serverId && !(window.self !== window.top))
+      return null;
     if (!b) return null;
     const merged = mergeUser(b, {
       ...b,
@@ -176,9 +192,22 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
     const framed = q.get("iframe") === "1" || window.self !== window.top;
     if (!framed) return false;
     const c = readRelmesEmbedUserCookie();
-    return Boolean(c?.id && hasRelmesEmbedSessionVerified());
+    if (c?.id && hasRelmesEmbedSessionVerified()) return true;
+    // Relmes iframe URL always includes userId + serverId — start embed sync without waiting for postMessage.
+    const userId = q.get("userId")?.trim() ?? "";
+    const serverId = q.get("serverId")?.trim() ?? "";
+    return Boolean(userId && serverId);
   });
   const [relmesHandshakeFailed, setRelmesHandshakeFailed] = useState(false);
+  const [pluginSessionSynced, setPluginSessionSynced] =
+    useState(!isIframeContext);
+  const [pluginSessionSyncing, setPluginSessionSyncing] = useState(false);
+  const [pluginSessionFailed, setPluginSessionFailed] = useState(false);
+  const [pluginApiUser, setPluginApiUser] = useState<{
+    id: string;
+    email: string;
+    name: string;
+  } | null>(null);
   const receivedRef = useRef(false);
   receivedRef.current = receivedFromParent;
 
@@ -189,6 +218,7 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    captureEmbedQueryFromUrl();
     announceReady();
   }, [announceReady]);
 
@@ -226,7 +256,18 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setUser((prev) => mergeUser(prev, normalized));
+      setUser((prev) => {
+        const next = mergeUser(prev, normalized);
+        if (
+          next.id &&
+          (next.id !== prev?.id || next.serverId !== prev?.serverId)
+        ) {
+          setPluginSessionSynced(false);
+          setPluginSessionFailed(false);
+          setPluginApiUser(null);
+        }
+        return next;
+      });
       writeRelmesEmbedUserCookie(normalized);
       markRelmesEmbedSessionVerified();
       setEmbedSessionVerified(true);
@@ -248,19 +289,46 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
       user,
       receivedFromParent,
       relmesHandshakeFailed,
+      pluginSessionSynced,
+      pluginSessionSyncing,
+      pluginSessionFailed,
+      pluginApiUser,
+      setPluginSessionSynced,
+      setPluginSessionSyncing,
+      setPluginSessionFailed,
+      setPluginApiUser,
     }),
-    [isIframeContext, hideBoilerplateAuth, user, receivedFromParent, relmesHandshakeFailed],
+    [
+      isIframeContext,
+      hideBoilerplateAuth,
+      user,
+      receivedFromParent,
+      relmesHandshakeFailed,
+      pluginSessionSynced,
+      pluginSessionSyncing,
+      pluginSessionFailed,
+      pluginApiUser,
+    ],
   );
 
   const showApp =
-    !isIframeContext ||
-    receivedFromParent ||
-    relmesHandshakeFailed;
+    !isIframeContext || receivedFromParent || relmesHandshakeFailed;
 
-  const showLoading = isIframeContext && !receivedFromParent && !relmesHandshakeFailed;
+  const showLoading =
+    isIframeContext &&
+    !relmesHandshakeFailed &&
+    !pluginSessionFailed &&
+    (!receivedFromParent || !pluginSessionSynced);
 
-  if (import.meta.env.DEV && isIframeContext && typeof document !== "undefined") {
-    if (!isTrustedRelmesReferrer() && !new URLSearchParams(window.location.search).has("iframe")) {
+  if (
+    import.meta.env.DEV &&
+    isIframeContext &&
+    typeof document !== "undefined"
+  ) {
+    if (
+      !isTrustedRelmesReferrer() &&
+      !new URLSearchParams(window.location.search).has("iframe")
+    ) {
       // framed but odd referrer — still wait for postMessage; only log once
       const w = window as Window & { __relmesReferrerWarned?: boolean };
       if (!w.__relmesReferrerWarned) {
@@ -275,7 +343,12 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
   return (
     <EmbedUserContext.Provider value={value}>
       {showLoading ? <RelmesHandshakeLoading /> : null}
-      {isIframeContext && relmesHandshakeFailed ? <RelmesHandshakeError /> : null}
+      {isIframeContext && relmesHandshakeFailed ? (
+        <RelmesHandshakeError
+          title="Could not load your Relmes session"
+          detail="Open this plugin from the Relmes app at relmes.in, relmes.com, or localhost:3000, and stay signed in there."
+        />
+      ) : null}
       {showApp ? children : null}
     </EmbedUserContext.Provider>
   );
@@ -283,7 +356,10 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
 
 export function useEmbedUserContext(): EmbedCtx {
   const ctx = useContext(EmbedUserContext);
-  if (!ctx) throw new Error("useEmbedUserContext must be used within EmbedUserProvider");
+  if (!ctx)
+    throw new Error(
+      "useEmbedUserContext must be used within EmbedUserProvider",
+    );
   return ctx;
 }
 

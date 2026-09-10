@@ -91,7 +91,7 @@ export function useStandardChess(mode: "cpu" | "2p") {
   );
 
   useEffect(() => {
-    if (mode !== "cpu" || chess.isGameOver() || chess.turn() !== "b" || thinking) return;
+    if (mode !== "cpu" || chess.isGameOver() || chess.turn() !== "b") return;
 
     setThinking(true);
     const timer = window.setTimeout(() => {
@@ -106,7 +106,7 @@ export function useStandardChess(mode: "cpu" | "2p") {
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [chess, mode, thinking]);
+  }, [chess, mode]);
 
   return {
     chess,

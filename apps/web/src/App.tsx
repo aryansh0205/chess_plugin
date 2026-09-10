@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useEmbedUserContext } from "./embed/EmbedUserProvider";
+import { captureEmbedQueryFromUrl } from "./embed/relmesEmbed";
 import { ChessPage } from "./chess/ChessPage";
 import { HomePage } from "./pages/HomePage";
 import { ResearchPage } from "./research/ResearchPage";
@@ -26,6 +27,12 @@ function EmbedShell({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    captureEmbedQueryFromUrl(location.search);
+  }, [location.search]);
+
   return (
     <EmbedShell>
       <Routes>

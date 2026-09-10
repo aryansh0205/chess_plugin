@@ -3,22 +3,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** `apps/api` directory — stable even when Turbo/npm cwd is the monorepo root. */
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = path.resolve(apiRoot, "../..");
 
-/**
- * Load env files in order; later files override earlier ones.
- * - `.env.example` — team defaults / template (optional)
- * - `.env` — local secrets (optional; usually gitignored)
- *
- * Many editors only update `.env.example`; without a `.env`, nothing was loaded before.
- */
-function loadIfExists(rel: string): void {
-  const full = path.join(apiRoot, rel);
+function loadIfExists(full: string): void {
   if (fs.existsSync(full)) {
     dotenv.config({ path: full });
   }
 }
 
-loadIfExists(".env.example");
-loadIfExists(".env");
+/** Monorepo root `.env` first; legacy `apps/api/.env` may still override locally. */
+loadIfExists(path.join(repoRoot, ".env"));
+loadIfExists(path.join(repoRoot, ".env.local"));
+loadIfExists(path.join(apiRoot, ".env"));
+
+export const env = process.env;

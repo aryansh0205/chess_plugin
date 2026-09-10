@@ -1,13 +1,17 @@
 {
-  "name": "relmes-full",
+  "name": "relmes-chess",
   "private": true,
+  "type": "module",
   "packageManager": "npm@11.12.1",
   "workspaces": ["apps/*"],
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "build:web": "npm run build -w web",
+    "build:api": "npm run build -w api",
     "dev:web": "npm run dev -w web",
-    "dev:api": "npm run dev -w api"
+    "dev:api": "npm run dev -w api",
+    "start:api": "npm run start -w api"
   },
   "devDependencies": {
     "turbo": "^2.4.4"

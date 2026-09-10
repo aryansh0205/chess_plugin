@@ -39,16 +39,25 @@ function DecoLines() {
 }
 
 export function HomePage() {
-  const { user, isEmbed, hideBoilerplateAuth } = useEmbedUserContext();
+  const {
+    user,
+    isEmbed,
+    hideBoilerplateAuth,
+    pluginApiUser,
+    pluginSessionSynced,
+  } = useEmbedUserContext();
   const { mode, toggleMode } = useTheme();
   const [account, setAccount] = useState<PublicUser | null>(() => readUserCookie());
 
   useEffect(() => {
-    if (isEmbed) return;
+    if (isEmbed) {
+      if (pluginSessionSynced && pluginApiUser) setAccount(pluginApiUser);
+      return;
+    }
     void fetchMe().then((u) => {
       if (u) setAccount(u);
     });
-  }, [isEmbed]);
+  }, [isEmbed, pluginSessionSynced, pluginApiUser]);
 
   async function onLogout() {
     await logout();
@@ -86,12 +95,12 @@ export function HomePage() {
             {mode === "dark" ? "Light" : "Dark"}
           </button>
           {hideBoilerplateAuth ? (
-            user ? (
+            pluginApiUser ? (
               <span
                 className="hidden max-w-[220px] truncate text-sm text-fg-muted sm:inline"
-                title={user.email || undefined}
+                title={pluginApiUser.email || undefined}
               >
-                {displayUserName(user)}
+                {pluginApiUser.name}
               </span>
             ) : null
           ) : account ? (
@@ -179,35 +188,41 @@ export function HomePage() {
           </div>
         </div>
 
-        {user ? (
+        {pluginApiUser || account ? (
           <div className="relative mt-10 overflow-hidden rounded-2xl border border-border bg-surface/80 p-6 shadow-sm backdrop-blur-sm sm:p-8 dark:bg-surface/50">
             <div className="absolute right-6 top-6 h-16 w-16 rounded-full border border-dashed border-border/80" />
             <div className="absolute bottom-6 left-8 h-px w-24 bg-gradient-to-r from-accent/80 to-transparent" />
             <p className="text-sm font-semibold text-fg">
-              {isEmbed ? "Signed in via Relmes (iframe)" : "Local session"}
+              {isEmbed ? "Plugin account (created from Relmes embed)" : "Local session"}
             </p>
             <dl className="mt-4 grid gap-2 text-sm text-fg-muted sm:grid-cols-2">
               <div className="rounded-lg border border-border/70 bg-page/40 px-3 py-2">
                 <dt className="text-xs uppercase tracking-wide text-fg-muted/90">Display name</dt>
-                <dd className="mt-1 font-medium text-fg">{displayUserName(user) || "—"}</dd>
+                <dd className="mt-1 font-medium text-fg">
+                  {pluginApiUser?.name || account?.name || displayUserName(user) || "—"}
+                </dd>
               </div>
               <div className="rounded-lg border border-border/70 bg-page/40 px-3 py-2">
                 <dt className="text-xs uppercase tracking-wide text-fg-muted/90">Username</dt>
                 <dd className="mt-1 font-medium text-fg">
-                  {user.username ? `@${user.username.replace(/^@/, "")}` : "—"}
+                  {user?.username ? `@${user.username.replace(/^@/, "")}` : "—"}
                 </dd>
               </div>
               <div className="rounded-lg border border-border/70 bg-page/40 px-3 py-2 sm:col-span-2">
-                <dt className="text-xs uppercase tracking-wide text-fg-muted/90">Email</dt>
-                <dd className="mt-1 font-medium text-fg">{user.email || "—"}</dd>
+                <dt className="text-xs uppercase tracking-wide text-fg-muted/90">Plugin email</dt>
+                <dd className="mt-1 font-medium text-fg">
+                  {pluginApiUser?.email || account?.email || "—"}
+                </dd>
               </div>
               <div className="rounded-lg border border-border/70 bg-page/40 px-3 py-2">
-                <dt className="text-xs uppercase tracking-wide text-fg-muted/90">User id</dt>
-                <dd className="mt-1 font-mono text-xs text-fg">{user.id}</dd>
+                <dt className="text-xs uppercase tracking-wide text-fg-muted/90">Plugin user id</dt>
+                <dd className="mt-1 font-mono text-xs text-fg">
+                  {pluginApiUser?.id || account?.id || "—"}
+                </dd>
               </div>
               <div className="rounded-lg border border-border/70 bg-page/40 px-3 py-2">
                 <dt className="text-xs uppercase tracking-wide text-fg-muted/90">Realm</dt>
-                <dd className="mt-1 font-mono text-xs text-fg">{user.serverId || "—"}</dd>
+                <dd className="mt-1 font-mono text-xs text-fg">{user?.serverId || "—"}</dd>
               </div>
             </dl>
           </div>

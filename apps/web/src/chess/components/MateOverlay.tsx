@@ -5,13 +5,14 @@ import { resultSubtitle, resultTitle } from "../gameResult";
 type Props = {
   result: GameResult;
   mode: "cpu" | "2p" | "4p";
+  vsCpu?: boolean;
   onNewGame: () => void;
   onDismiss?: () => void;
 };
 
-export function MateOverlay({ result, mode, onNewGame, onDismiss }: Props) {
-  const title = resultTitle(result, mode);
-  const subtitle = resultSubtitle(result, mode);
+export function MateOverlay({ result, mode, vsCpu = true, onNewGame, onDismiss }: Props) {
+  const title = resultTitle(result, mode, vsCpu);
+  const subtitle = resultSubtitle(result, mode, vsCpu);
 
   if (!title || !subtitle) return null;
 
