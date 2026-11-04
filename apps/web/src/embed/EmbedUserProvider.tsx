@@ -117,13 +117,13 @@ const EmbedUserContext = createContext<EmbedCtx | null>(null);
 
 function RelmesHandshakeLoading() {
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-[hsl(var(--color-page))] text-[hsl(var(--color-fg))]">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-page text-fg">
       <div
-        className="h-10 w-10 animate-spin rounded-full border-2 border-[hsl(var(--color-border))] border-t-[hsl(var(--color-accent))]"
+        className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-accent"
         aria-hidden
       />
-      <p className="max-w-sm px-6 text-center text-sm text-[hsl(var(--color-fg-muted))]">
-        Signing you into this plugin…
+      <p className="max-w-sm px-6 text-center text-sm text-fg-muted">
+        Authenticating user…
       </p>
     </div>
   );
@@ -349,7 +349,7 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
           detail="Open this plugin from the Relmes app at relmes.in, relmes.com, or localhost:3000, and stay signed in there."
         />
       ) : null}
-      {showApp ? children : null}
+      {showApp && !showLoading ? children : null}
     </EmbedUserContext.Provider>
   );
 }

@@ -14,7 +14,7 @@ function loadIfExists(full: string): void {
 
 /** Monorepo root `.env` first; legacy `apps/api/.env` may still override locally. */
 loadIfExists(path.join(repoRoot, ".env"));
-loadIfExists(path.join(repoRoot, ".env.local"));
+// loadIfExists(path.join(repoRoot, ".env.local"));
 loadIfExists(path.join(apiRoot, ".env"));
 
 export const env = process.env;
