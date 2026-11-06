@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { RelmesEmbedNavSync } from "./embed/RelmesEmbedNavSync";
+import { RelmesEmbedScrollSync } from "./embed/RelmesEmbedScrollSync";
 import "./index.css";
 import { Providers } from "./providers";
 
@@ -11,6 +12,7 @@ createRoot(document.getElementById("root")!).render(
     <Providers>
       <BrowserRouter>
         <RelmesEmbedNavSync />
+        <RelmesEmbedScrollSync />
         <App />
       </BrowserRouter>
     </Providers>

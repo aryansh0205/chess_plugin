@@ -349,7 +349,13 @@ export function EmbedUserProvider({ children }: { children: ReactNode }) {
           detail="Open this plugin from the Relmes app at relmes.in, relmes.com, or localhost:3000, and stay signed in there."
         />
       ) : null}
-      {showApp && !showLoading ? children : null}
+      {/*
+        Children must mount while the "Authenticating user…" overlay is up: they include
+        <RelmesEmbedAuthSync />, which is what flips `pluginSessionSynced` and clears the overlay.
+        Gating on `!showLoading` here deadlocks (sync never runs, overlay never goes away).
+        The overlay is fixed/z-100 and usePluginAuth() already waits for the session.
+      */}
+      {showApp ? children : null}
     </EmbedUserContext.Provider>
   );
 }
